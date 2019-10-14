@@ -19,6 +19,15 @@ server.get('/', (req, res) => {
 server.post('/api/register', (req, res) => {
   let user = req.body;
 
+  // Validate the user
+  if (user) {
+
+  // Hash the password
+    const hash = bcrypt.hashSync(user.password, 8);
+
+  // Override the password with the hash
+    user.password = hash;
+  
   Users.add(user)
     .then(saved => {
       res.status(201).json(saved);
@@ -26,15 +35,19 @@ server.post('/api/register', (req, res) => {
     .catch(error => {
       res.status(500).json(error);
     });
+  } else {
+    res.status(400).json({ message: 'Please provide a valid username' })
+  }
 });
 
 server.post('/api/login', (req, res) => {
   let { username, password } = req.body;
 
+  if (username && password) {
   Users.findBy({ username })
     .first()
     .then(user => {
-      if (user) {
+      if (user && bcrypt.compareSync(password, user.password)) {
         res.status(200).json({ message: `Welcome ${user.username}!` });
       } else {
         res.status(401).json({ message: 'Invalid Credentials' });
@@ -43,6 +56,9 @@ server.post('/api/login', (req, res) => {
     .catch(error => {
       res.status(500).json(error);
     });
+  } else {
+      res.status(400).json({ message: 'Please provide valid credentials' })
+  }
 });
 
 server.get('/api/users', (req, res) => {
@@ -54,22 +70,18 @@ server.get('/api/users', (req, res) => {
 });
 
 server.get('/hash', (req, res) => {
-  const credentials = req.body;
-  const hash = bcrypt.hashSync(credentials.password, 14);
-  credentials.password = hash;
-  console.log(hash);
-  // let { username, password } = req.body;
+  // Read a password from the authorization header (must be explicitly stated within Insomnia Header)
+  const password = req.headers.authorization;
 
-  // Users.findBy({ username })
-  //   .first()
-  //   .then(user => {
-  //     // if (user && bcrypt.compareSync(password, user.password)) {
-  //     //   res.status(200).json({ message: `Welcome ${user.username}` })
-  //     // } else {
-  //     //   res.status(401).json({ message: 'Invalid Credentials' })
-  //     // }
-  //   })
-  //   .catch(err => res.status(500).json(err))
+  if (password) {
+    const hash = bcrypt.hashSync(password, 8); // number makes cracking exponentially more difficult, 14 is best practice...
+                                             // ...but also slows down server, so use smaller numbers for testing purposes
+
+    res.status(200).json({ hash }); // no {} would return the same info as a plain string.
+  } else {
+    res.status(400).json({ message: 'Please provide credentials' })
+  }
+
   // // read a password from the Authorization header
   // // return an object with the password hashed using bcryptjs
   // // { hash: '970(&(:OHKJHIY*HJKH(*^)*&YLKJBLKJGHIUGH(*P' }

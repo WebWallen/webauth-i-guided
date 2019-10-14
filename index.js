@@ -61,7 +61,7 @@ server.post('/api/login', (req, res) => {
   }
 });
 
-server.get('/api/users', (req, res) => {
+server.get('/api/users', protected, (req, res) => {
   Users.find()
     .then(users => {
       res.json(users);
@@ -86,6 +86,18 @@ server.get('/hash', (req, res) => {
   // // return an object with the password hashed using bcryptjs
   // // { hash: '970(&(:OHKJHIY*HJKH(*^)*&YLKJBLKJGHIUGH(*P' }
 });
+
+function protected() {
+  const password = headers.password;
+  const username = headers.username;
+
+  if (username && password) {
+    const hash = bcrypt.hashSync(password, 8);
+    res.status(200).json({ hash })
+  } else {
+    res.status(400).json({ message: 'Please enter valid credentials' })
+  }
+}
 
 const port = process.env.PORT || 5000;
 server.listen(port, () => console.log(`\n** Running on port ${port} **\n`));
